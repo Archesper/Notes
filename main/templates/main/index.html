@@ -1,0 +1,174 @@
+{% extends 'main/layout.html' %}
+{% block title %} Notes {% endblock %}
+{% block styles %} /static/main/main_styles.css {% endblock %}
+{% block body %}
+<div id="nav">
+    <button id="1" class="btn" v-on:click="toggle"
+        v-bind:class="{'btn-success' : button_1, 'btn-outline-success' : !button_1}">
+        Notes</button>
+    <button id="2" class="btn" v-on:click="toggle"
+        v-bind:class="{'btn-success' : button_2, 'btn-outline-success' : !button_2}">
+        Add Note</button>
+    <button id="3" class="btn" v-on:click="toggle"
+        v-bind:class="{'btn-danger' : button_3, 'btn-outline-danger' : !button_3}">
+        Delete All Notes </button>
+</div>
+<div v-if="seen" id="vm1">
+    <ul class="list-group">
+        <note v-for="note in notes" v-bind:note="note"> </note>
+    </ul>
+</div>
+<div v-if="seen" id="vm2">
+    <form method="POST" v-on:submit.prevent="new_note">
+        <label class="form-label">Note Title</label>
+        <input type="text" name="title" class="form-control">
+        <label class="form-label">Note Body</label>
+        <textarea class="form-control" name="body"> </textarea>
+        <label class="form-label"> (Optional) Note Image </label>
+        <input type="url" placeholder="Please input your image's URL." name="image" class="form-control">
+        <label class="form-label">Note Category</label>
+        <select name="category" class="form-select" v-bind:class="category" v-on:change="categorize">
+            <option value="studying" class="studying">Studying</option>
+            <option value="achievement" class="achievement">Achievement</option>
+            <option value="work" class="work">Work</option>
+            <option value="deadline" class="deadline">Deadline</option>
+            <option value="reminder" class="reminder">Reminder</option>
+            <option value="other" class="other">Other</option>
+        </select>
+        <input type="submit" class="btn btn-primary" id="save" value="Submit">
+    </form>
+</div>
+<div v-if="seen" id="vm3">
+    <p>Are you sure? <strong>This is irreversible.</strong></p>
+    <button v-on:click="wipe" class="btn btn-danger">Confirm</button>
+    <button v-on:click="back" class="btn btn-secondary">Go Back</button>
+</div>
+{% endblock %}
+{% block inline_script %}
+<script>
+    var nav = new Vue({
+        delimiters: ["((", "))"],
+        el: '#nav',
+        data: {
+            button_1: true,
+            button_2: false,
+            button_3: false,
+        },
+        methods: {
+            toggle(event) {
+                button_id = event.target.id;
+                if (button_id === '1') {
+                    this.button_1 = vm1.$data.seen = true
+                    this.button_2 = vm2.$data.seen = false
+                    this.button_3 = vm3.$data.seen = false
+                    load_notes()
+                } else if (button_id === '2') {
+                    this.button_1 = vm1.$data.seen = false
+                    this.button_2 = vm2.$data.seen = true
+                    this.button_3 = vm3.$data.seen = false
+                } else {
+                    this.button_1 = vm1.$data.seen = false
+                    this.button_2 = vm2.$data.seen = false
+                    this.button_3 = vm3.$data.seen = true
+                }
+            }
+        }
+    })
+
+    var vm1 = new Vue({
+        delimiters: ["((", "))"],
+        el: '#vm1',
+        data: {
+            seen: true,
+            notes: [],
+        },
+    })
+    var vm2 = new Vue({
+        el: '#vm2',
+        data: {
+            seen: false,
+            category: 'studying',
+        },
+        methods: {
+            categorize(event) {
+                new_category = event.target.value
+                this.category = new_category
+            },
+            new_note(event) {
+                console.log(event)
+                fetch('add_note/', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        title: event.target.title.value,
+                        body: event.target.body.value,
+                        image: event.target.image.value,
+                        category: event.target.category.value,
+                    })
+                })
+                .then(load_notes())
+                .then(function () {
+                        nav.$data.button_1 = vm1.$data.seen = true
+                        nav.$data.button_2 = vm2.$data.seen = false
+                        nav.$data.button_3 = vm3.$data.seen = false
+                    })
+            }
+        }
+    })
+    var vm3 = new Vue({
+        el: '#vm3',
+        data: {
+            seen: false,
+        },
+            methods: {
+                back(event) {
+                    nav.$data.button_1 = vm1.$data.seen = true
+                    nav.$data.button_2 = vm2.$data.seen = false
+                    nav.$data.button_3= vm3.$data.seen = false
+                },
+                wipe(event) {
+                    fetch('wipe', {
+                        method: 'DELETE'
+                    })
+                    .then(function() {
+                        load_notes()
+                        nav.$data.button_1 = vm1.$data.seen = true
+                        nav.$data.button_2 = vm2.$data.seen = false
+                        nav.$data.button_3= vm3.$data.seen = false
+                    })
+                }
+            }
+    })
+    Vue.component('note', {
+        delimiters: ['((', '))'],
+        props: ['note'],
+        template: `
+            <li class="list-group-item" v-bind:class="note.category">
+                <h3> ((note.title)) <span> ((note.time)) </span> <svg v-bind:data-note="note.id" onclick="del(event)"
+                     width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-trash-fill" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path v-bind:data-note="note.id" onclick="del(event)" fill-rule="evenodd" d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1H2.5zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5zM8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5zm3 .5a.5.5 0 0 0-1 0v7a.5.5 0 0 0 1 0v-7z"/>
+                    </svg> 
+                </h3>
+                <img v-if="note.image" v-bind:src="note.image">
+                <p> ((note.body)) </p>
+            </li>`
+    })
+    function load_notes() {
+        fetch('/note')
+            .then(response => response.json())
+            .then(notes => {
+                vm1.$data.notes = notes
+            })
+    }
+    function del(event) {
+                console.log(event.target)
+                id = event.target.dataset.note
+                fetch(`delete/${id}`, {
+                    method: 'DELETE'
+                })
+                .then(setTimeout('load_notes()', 700))
+            }
+    document.addEventListener('DOMContentLoaded', function () {
+        load_notes()
+    })
+</script>
+{% endblock %}

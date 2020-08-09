@@ -1,0 +1,24 @@
+{% extends "main/layout.html" %}
+{% block title %} Register {% endblock %}
+{% block styles %} /static/main/authentification_styles.css {% endblock %}
+
+{% block body %}
+{% if message %}
+<div class="alert alert-danger">{{message}}</div>
+{% endif %}
+<form action="{% url 'register' %}" method="POST">
+    {% csrf_token %}
+    <label class="form-label">Username</label>
+    <input id="username" class="form-control" type="text" name="username">
+    <label class="form-label">Password</label>
+    <input placeholder="Must contain at least 8 characters." id="password" class="form-control password_field"
+        type="password" name="password">
+    <label class="form-label">Confirm Password</label>
+    <input placeholder="Make sure the passwords match." id="password2" class="form-control password_field"
+        type="password" name="password_2">
+    <input disabled id="confirm" class="btn btn-success" type="submit" value="Register">
+    <a href="{% url 'login' %}">Already have an account? Click here to log in!</a>
+</form>
+{% endblock %}
+
+{% block script %} /static/main/register.js {% endblock %}
